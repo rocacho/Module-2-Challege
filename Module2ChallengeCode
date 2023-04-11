@@ -1,0 +1,173 @@
+Sub Challenge2()
+
+'Aggregate ticker to create summary report forTickers & Total Stock Volume
+'Solved based on Karen Tateosyan tutorial "2.22 Agreggating data with Excel VBA": https://www.youtube.com/watch?v=nSWoLqLua-s
+
+    Dim Aws As Worksheet, reportws As Worksheet
+    Dim AwsLastRow As Long, ReportLastRow As Long, x As Long
+    Dim TickerRng As Range, TickerRng2 As Range, StockVolume As Range, StockVolume2 As Range, OpenPriceRng As Range, MatchRng As Range, ClosePriceRng As Range, YearlyChangeRng As Range, PercentChangeRng As Range
+    
+    Set Aws = ThisWorkbook.Worksheets("2018")
+    Set reportws = ThisWorkbook.Worksheets("Report")
+    
+   AwsLastRow = Aws.Range("A" & Rows.Count).End(xlUp).Row
+   ReportLastRow = reportws.Range("A" & Rows.Count).End(xlUp).Row
+   
+   Set TickerRng = Aws.Range("A2:A" & AwsLastRow)
+   Set TickerRng2 = reportws.Range("A2:A" & ReportLastRow)
+   Set StockVolume = Aws.Range("G2:G" & AwsLastRow)
+   Set StockVolume2 = reportws.Range("D2:D" & ReportLastRow)
+   Set OpenPriceRng = Aws.Range("C2:C" & AwsLastRow)
+   Set MatchRng = reportws.Range("A2:A" & ReportLastRow)
+   Set ClosePriceRng = Aws.Range("F2:F" & AwsLastRow)
+   Set YearlyChangeRng = reportws.Range("B2:B" & ReportLastRow)
+   Set PercentChangeRng = reportws.Range("C2:C" & ReportLastRow)
+   
+   Aws.Columns(1).Copy Destination:=reportws.Range("A1")
+   
+   reportws.Columns.RemoveDuplicates Columns:=1, Header:=xlYes
+   reportws.Range("B1").Value = "Yearly Change"
+   reportws.Range("C1").Value = "Percent Change"
+   reportws.Range("D1").Value = "Total Stock Volume"
+   reportws.Range("F1").Value = "Open Price"
+   reportws.Range("G1").Value = "Close Price"
+   reportws.Range("H1").Value = "Count Ticker"
+   reportws.Range("I1").Value = "Count Match"
+   
+'For Calculating total Volume of Stocks
+   
+   For x = 2 To ReportLastRow
+   
+        reportws.Range("D" & x).Value = Application.WorksheetFunction.SumIf( _
+            TickerRng, reportws.Range("A" & x).Value, StockVolume)
+   
+   Next x
+   
+'For For OpenPrice: Index&Macth formula where Index OpenPrice is  & Match is TickerRng
+'Solved based on Karen Tateosyan tutorial "2.19 INDEX and MATCH Functions in Another Sheet with VBA": https://www.youtube.com/watch?v=Rmy5-PC7QKY
+
+  For x = 2 To ReportLastRow
+   
+        reportws.Range("F" & x).Value = Application.WorksheetFunction.Index( _
+                OpenPriceRng, _
+                Application.WorksheetFunction.Match(reportws.Range("A" & x).Value, TickerRng, 0))
+   
+   Next x
+
+'For Calculating Count Ticker
+   
+   For x = 2 To ReportLastRow
+   
+        reportws.Range("H" & x).Value = Application.WorksheetFunction.CountIf( _
+            TickerRng, reportws.Range("A" & x).Value)
+   
+   Next x
+
+'For Count Match
+
+  For x = 2 To ReportLastRow
+   
+        reportws.Range("I" & x).Value = Application.WorksheetFunction.Match( _
+            reportws.Range("A" & x).Value, TickerRng, 0)
+   
+   Next x
+
+'For For ClosePrice: Index&Macth formula where Index OpenPrice is  & Match is TickerRng
+
+  For x = 2 To ReportLastRow
+   
+        reportws.Range("G" & x).Value = Application.WorksheetFunction.Index( _
+                ClosePriceRng, _
+                ((Application.WorksheetFunction.Match(reportws.Range("A" & x).Value, TickerRng, 0) + _
+                Application.WorksheetFunction.CountIf(TickerRng, reportws.Range("A" & x).Value)) _
+                - 1))
+   
+   Next x
+   
+'Yearly Change Closing Price vs. Open Price
+
+  For x = 2 To ReportLastRow
+   
+        reportws.Range("B" & x).Value = (Application.WorksheetFunction.Index( _
+                ClosePriceRng, _
+                ((Application.WorksheetFunction.Match(reportws.Range("A" & x).Value, TickerRng, 0) + _
+                Application.WorksheetFunction.CountIf(TickerRng, reportws.Range("A" & x).Value)) _
+                - 1))) - (Application.WorksheetFunction.Index( _
+                OpenPriceRng, _
+                Application.WorksheetFunction.Match(reportws.Range("A" & x).Value, TickerRng, 0)))
+
+Next x
+
+'Percent Change Closing Price vs. Open Price
+
+  For x = 2 To ReportLastRow
+   
+        reportws.Range("C" & x).Value = (((Application.WorksheetFunction.Index( _
+                ClosePriceRng, _
+                ((Application.WorksheetFunction.Match(reportws.Range("A" & x).Value, TickerRng, 0) + _
+                Application.WorksheetFunction.CountIf(TickerRng, reportws.Range("A" & x).Value)) _
+                - 1))) / (Application.WorksheetFunction.Index( _
+                OpenPriceRng, _
+                Application.WorksheetFunction.Match(reportws.Range("A" & x).Value, TickerRng, 0)))) - 1)
+                'Conditional formating percentages
+        reportws.Range("C" & x).Style = "Percent"
+
+        
+Next x
+
+'Conditional formating for Yearly Change
+'Based on EXCEL DESTINATION Tutorial "Conditional Formatting usingVBA Code": https://www.youtube.com/watch?v=F29G18GdTAQ&t=343s
+
+For Each cell In YearlyChangeRng
+
+    If cell.Value < 0 Then
+        cell.Interior.ColorIndex = 3
+    ElseIf cell.Value >= 0 Then
+        cell.Interior.ColorIndex = 4
+        
+    End If
+
+Next
+
+'Creating summary table
+
+   reportws.Range("L2").Value = "Greatest Increase"
+   reportws.Range("L3").Value = "Greatest Decrease"
+   reportws.Range("L4").Value = "Greatest Total Volume"
+   reportws.Range("M1").Value = "Ticker Value"
+   reportws.Range("N1").Value = "Value"
+   
+'Populate Values Column
+
+   reportws.Range("N2").Value = Application.WorksheetFunction.Max(PercentChangeRng)
+   reportws.Range("N2").Style = "Percent"
+   reportws.Range("N3").Value = Application.WorksheetFunction.Min(PercentChangeRng)
+   reportws.Range("N3").Style = "Percent"
+   reportws.Range("N4").Value = Application.WorksheetFunction.Max(StockVolume2)
+
+'Populate Ticker Value Column
+
+'Ticker Value for Greatest Increase
+
+   reportws.Range("M2").Value = Application.WorksheetFunction.Index( _
+        TickerRng2, _
+        Application.WorksheetFunction.Match(reportws.Range("N2").Value, PercentChangeRng, 0))
+
+'Ticker Value for Greatest Decrease
+
+   reportws.Range("M3").Value = Application.WorksheetFunction.Index( _
+        TickerRng2, _
+        Application.WorksheetFunction.Match(reportws.Range("N3").Value, PercentChangeRng, 0))
+        
+'Ticker Value for Greatest Total Volume
+
+   reportws.Range("M4").Value = Application.WorksheetFunction.Index( _
+        TickerRng2, _
+        Application.WorksheetFunction.Match(reportws.Range("N4").Value, StockVolume2, 0))
+  
+'Format to tables
+   
+reportws.Columns.AutoFit
+reportws.Columns.Sort key1:=reportws.Range("A1"), order1:=xlAscending, Header:=xlYes
+
+End Sub
